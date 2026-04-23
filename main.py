@@ -5,9 +5,9 @@ import argparse
 import os
 from datetime import datetime
 
-# Default crop for 2560x1440 screen (x, y, width, height)
-# Clears macOS menu bar, Chrome UI, and footer/dock
-DEFAULT_CROP = "0,160,2560,1080"
+# Optimized crop for 2560x1440 screen to keep only the central calendar content
+# X=630, Y=160, Width=1300, Height=1000
+DEFAULT_CROP = "630,160,1300,1000"
 
 def capture_forex_factory(date_str=None, output_path="forexfactory.png", crop=None):
     """
