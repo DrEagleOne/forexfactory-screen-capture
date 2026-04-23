@@ -2,6 +2,7 @@ import subprocess
 import time
 import sys
 import argparse
+import os
 from datetime import datetime
 
 # Default crop for 2560x1440 screen (x, y, width, height)
@@ -21,6 +22,10 @@ def capture_forex_factory(date_str=None, output_path="forexfactory.png", crop=No
     if date_str is None:
         date_str = datetime.now().strftime("%b%d.%Y").lower()
     
+    # Convert relative path to absolute path
+    if not os.path.isabs(output_path):
+        output_path = os.path.abspath(output_path)
+    
     url = f"https://www.forexfactory.com/calendar?day={date_str}"
     
     try:
@@ -32,13 +37,13 @@ def capture_forex_factory(date_str=None, output_path="forexfactory.png", crop=No
         print(f"[*] Waiting {wait_time} seconds for Cloudflare and page to fully load...")
         time.sleep(wait_time)
         
+        print(f"[*] Capturing screen to {output_path}...")
         if crop:
-            print(f"[*] Capturing cropped screen ({crop}) to {output_path}...")
-            # screencapture -R x,y,w,h
-            subprocess.run(["screencapture", "-R", crop, output_path], check=True)
+            print(f"[*] Capturing cropped screen ({crop})...")
+            subprocess.run(["screencapture", "-D", "1", "-xC", "-R", crop, output_path], check=True)
         else:
-            print(f"[*] Capturing full screen to {output_path}...")
-            subprocess.run(["screencapture", "-x", output_path], check=True)
+            print(f"[*] Capturing full screen...")
+            subprocess.run(["screencapture", "-D", "1", "-xC", output_path], check=True)
         
         print("[*] Closing Google Chrome to save resources...")
         subprocess.run(["osascript", "-e", 'quit app "Google Chrome"'], check=True)
