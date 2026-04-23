@@ -18,8 +18,8 @@ DEFAULT_CROP = "630,160,1300,1000"
 
 def auto_crop_image(input_path):
     """
-    Automatically crops the image to remove sidebars and browser UI.
-    Based on pixel brightness analysis.
+    Automatically crops the image to remove sidebars and browser UI,
+    while preserving the blue title bar and the calendar data.
     """
     if not HAS_CROP_DEPS:
         print("[-] Auto-crop dependencies (numpy, Pillow) not installed.")
@@ -59,17 +59,37 @@ def auto_crop_image(input_path):
     half = left + (right - left) // 2
     rb = arr[:, half:right, :].mean(axis=(1, 2))
 
+    # Find the start of the white table
     top = 0
     for i in range(len(rb) - 5):
         if all(rb[i:i+5] > 210):
             top = i
             break
 
+    # 3. Find the blue title bar above the table
+    title_top = top
+    for i in range(top - 1, -1, -1):
+        row_rgb = arr[i, half:right, :].mean(axis=0)
+        r, g, b = row_rgb
+        avg = (r + g + b) / 3
+        if (b > r + 20) and (60 < avg < 200):
+            title_top = i
+        else:
+            if title_top < top: # Already entered blue zone, stop at non-blue
+                break
+
+    # 4. Bottom bound: Sequence of rows with brightness < 210 (footer)
     bottom = len(rb)
     for i in range(top, len(rb) - 20):
         if all(rb[i:i+20] < 210):
             bottom = i
             break
+
+    # Clamp coordinates to image boundaries
+    left = max(0, min(w, left))
+    top = max(0, min(h, title_top))
+    right = max(0, min(w, right))
+    bottom = max(0, min(h, bottom))
 
     cropped = img.crop((left, top, right, bottom))
     cropped.save(input_path, quality=95)
@@ -93,16 +113,17 @@ def capture_forex_factory(date_str=None, output_path="forexfactory.png", crop=No
         print(f"[*] Waiting {wait_time} seconds for Cloudflare and page to fully load...")
         time.sleep(wait_time)
         
-        if crop:
+        if auto_crop:
+            print(f"[*] Capturing full screen for auto-crop to {output_path}...")
+            subprocess.run(["screencapture", "-D", "1", "-x", output_path], check=True)
+            print("[*] Applying automatic border cropping...")
+            auto_crop_image(output_path)
+        elif crop:
             print(f"[*] Capturing cropped screen ({crop}) to {output_path}...")
             subprocess.run(["screencapture", "-D", "1", "-x", "-R", crop, output_path], check=True)
         else:
             print(f"[*] Capturing full screen to {output_path}...")
             subprocess.run(["screencapture", "-D", "1", "-x", output_path], check=True)
-        
-        if auto_crop:
-            print("[*] Applying automatic border cropping...")
-            auto_crop_image(output_path)
         
         print("[*] Closing Google Chrome to save resources...")
         subprocess.run(["osascript", "-e", 'quit app "Google Chrome"'], check=True)
